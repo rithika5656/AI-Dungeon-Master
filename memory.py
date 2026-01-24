@@ -1,7 +1,6 @@
 """Vector database memory system for maintaining narrative consistency."""
 
 import chromadb
-from chromadb.config import Settings
 import json
 from typing import List, Dict, Optional
 import os
@@ -15,11 +14,7 @@ class MemoryManager:
         self.persist_directory = persist_directory
         
         # Create ChromaDB client with persistence
-        self.client = chromadb.Client(Settings(
-            chroma_db_impl="duckdb+parquet",
-            persist_directory=persist_directory,
-            anonymized_telemetry=False
-        ))
+        self.client = chromadb.PersistentClient(path=persist_directory)
         
         # Create collections for different memory types
         self.story_collection = self.client.get_or_create_collection(
