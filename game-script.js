@@ -4,6 +4,7 @@
 
 let gameState = {
     apiKey: null,
+    demoMode: true,  // DEFAULT: Start in demo mode
     character: {
         name: '',
         race: '',
@@ -29,11 +30,13 @@ let gameState = {
 
 function checkApiKey() {
     const savedKey = localStorage.getItem('openai_api_key');
-    if (savedKey) {
+    if (savedKey && savedKey.startsWith('sk-')) {
         gameState.apiKey = savedKey;
-        document.getElementById('apiModal').style.display = 'none';
-        document.getElementById('gameContainer').style.display = 'block';
+        gameState.demoMode = false;
     }
+    // ALWAYS show game - no modal blocking!
+    document.getElementById('apiModal').style.display = 'none';
+    document.getElementById('gameContainer').style.display = 'block';
 }
 
 function saveApiKey() {
@@ -45,23 +48,39 @@ function saveApiKey() {
 
     localStorage.setItem('openai_api_key', apiKey);
     gameState.apiKey = apiKey;
+    gameState.demoMode = false;
 
     document.getElementById('apiModal').style.display = 'none';
     document.getElementById('gameContainer').style.display = 'block';
+    alert('✅ Real AI mode activated! Restart your adventure to use GPT.');
 }
 
 function showSettings() {
-    const newKey = prompt('Enter new OpenAI API Key:', gameState.apiKey || '');
-    if (newKey && newKey.trim()) {
+    const currentMode = gameState.demoMode ? '🎭 Demo Mode (Simulated)' : '🤖 Real AI Mode (GPT)';
+    const message = `Current: ${currentMode}\n\nOptions:\n1. Enter API key for real AI\n2. Leave empty to stay in demo mode\n3. Enter "demo" to switch to demo mode`;
+
+    const newKey = prompt(message, gameState.apiKey || '');
+
+    if (newKey === null) return; // Cancelled
+
+    if (newKey.trim() === 'demo' || newKey.trim() === '') {
+        gameState.demoMode = true;
+        gameState.apiKey = null;
+        localStorage.removeItem('openai_api_key');
+        alert('✅ Switched to Demo Mode!');
+    } else if (newKey.startsWith('sk-')) {
         localStorage.setItem('openai_api_key', newKey.trim());
         gameState.apiKey = newKey.trim();
-        alert('API Key updated successfully!');
+        gameState.demoMode = false;
+        alert('✅ Switched to Real AI Mode!');
+    } else {
+        alert('Invalid API key format. Should start with "sk-"');
     }
 }
 
 // =====================================
 // CHARACTER CREATION
-// =====================================
+// ===================================== 
 
 let selectedOptions = {
     race: null,
@@ -87,6 +106,7 @@ function selectSetting(setting) {
         'pirate': 'the golden age of piracy with treacherous seas, hidden treasures, and rival pirates'
     };
     selectedOptions.setting = settingNames[setting];
+    selectedOptions.settingKey = setting;
     updateSelection('setting', setting);
 }
 
@@ -142,12 +162,152 @@ async function startAdventure() {
 }
 
 // =====================================
+// DEMO MODE RESPONSES
+// =====================================
+
+function getDemoResponse(action, isOpening = false) {
+    const char = gameState.character;
+
+    if (isOpening) {
+        const openings = {
+            classic: `The morning sun breaks over the mountains as you, **${char.name}**, awaken in the village of Millhaven. As a ${char.race} ${char.class}, you've traveled far seeking adventure.
+
+The village elder rushes toward you, face pale with worry. "Thank the gods you're here! Strange creatures have been spotted near the old ruins to the north. The guard captain needs someone brave enough to investigate."
+
+You notice three paths before you:
+1. Head directly to the ruins
+2. Visit the local tavern for information
+3. Speak with the guard captain first
+
+What do you do?`,
+            dark: `Blood-red moonlight filters through twisted trees as you, **${char.name}**, emerge from the cursed forest. Your ${char.race} heritage and ${char.class} training have prepared you for darkness, but nothing could prepare you for this...
+
+A village lies ahead, but something is wrong. No lights. No sounds. Just eerie silence and the smell of decay.
+
+A desperate note nailed to a tree reads: "They came at midnight. The darkness took them all. Only the bell tower remains safe. - M"
+
+Your choices:
+1. Search the silent houses
+2. Head straight to the bell tower  
+3. Investigate the town square
+
+What will you do?`,
+            scifi: `Warning klaxons blare as your ship, the *Starfire*, drops out of hyperspace. Captain ${char.name}, ${char.race} ${char.class}, you've arrived at Station Epsilon-7.
+
+But something's wrong. The station is dark, drifting. Your scanners detect life signs, but they're... erratic. Unstable.
+
+Your AI companion, ARIA, reports: "Captain, I'm detecting an unknown energy signature. It's similar to the ancient artifacts we've been tracking. Also... there's a distress beacon, but it's broadcasting in an extinct language."
+
+Your options:
+1. Dock and board the station
+2. Scan for more data first
+3. Respond to the distress beacon
+
+Your command?`,
+            pirate: `The Caribbean sun beats down as you, **${char.name}**, ${char.race} ${char.class}, stand at the helm of your ship. The crew whispers about the treasure map you acquired last night—supposedly leading to the legendary Dead Man's Gold.
+
+Your first mate approaches: "Captain! Spanish galleon spotted off starboard. She's heavy in the water—loaded with cargo. But there's also word that Governor Martinez is in port, offering amnesty and a commission to any pirate who surrenders."
+
+Three paths lie before you:
+1. Attack the Spanish galleon
+2. Follow the treasure map
+3. Meet with the Governor
+
+What be your orders, Captain?`
+        };
+
+        return openings[selectedOptions.settingKey] || openings.classic;
+    }
+
+    // Generate contextual responses based on action
+    const actionLower = action.toLowerCase();
+
+    if (actionLower.includes('attack') || actionLower.includes('fight')) {
+        return `You steel yourself and charge forward! Your ${char.class} training kicks in as you engage the threat.
+
+*The battle is fierce!* Your opponent counters with surprising speed, but your determination gives you the edge. After a intense struggle, victory is yours!
+
+As the dust settles, you notice a **mysterious glowing artifact** among the debris. You also spot a **hidden passageway** that wasn't visible before.
+
+What do you do next?`;
+    }
+
+    if (actionLower.includes('examine') || actionLower.includes('look') || actionLower.includes('search')) {
+        return `You carefully examine your surroundings with the keen eye of a ${char.class}.
+
+You discover:
+• **Ancient markings** on the wall telling a forgotten story
+• **A hidden compartment** containing a **glowing crystal**
+• **Fresh tracks** leading deeper into the unknown
+• **Faint whispers** echoing from somewhere ahead
+
+The crystal pulses with energy, resonating with your ${char.race} heritage. It seems to be pointing you toward something important.
+
+How do you proceed?`;
+    }
+
+    if (actionLower.includes('talk') || actionLower.includes('speak') || actionLower.includes('ask')) {
+        return `You approach and begin a conversation.
+
+The stranger's eyes widen as they notice your ${char.race} features and ${char.class} equipment.
+
+"${char.name}?" they whisper urgently. "I can't believe my luck finding you here! Listen carefully—there's no time. The Council of Shadows is planning something terrible. They've stolen the **Keystone of Eternity** and plan to use it at midnight."
+
+They press a **sealed letter** into your hand. "This will explain everything. Trust no one from the order. They may already be compromised."
+
+Before you can respond, they vanish into the crowd!
+
+What will you do?`;
+    }
+
+    if (actionLower.includes('magic') || actionLower.includes('cast') || actionLower.includes('spell')) {
+        return `You channel your mystical energy, calling upon the ancient powers!
+
+**Brilliant light erupts from your hands!** The spell manifests perfectly, enhanced by your ${char.class} abilities. 
+
+The magical energy reveals:
+• A **shimmering portal** that wasn't visible before
+• **Protective runes** glowing on the ground
+• A **spectral figure** materializing nearby
+• **Hidden magical traps** now neutralized
+
+The spectral figure bows: "Well done, wielder of magic. You have proven worthy. I offer you a choice: **Knowledge of the past** or **Sight of the future**?"
+
+Which do you choose?`;
+    }
+
+    // Default response
+    return `Your action has consequences!
+
+As a ${char.race} ${char.class}, you handle the situation with skill. Your decision opens new possibilities:
+
+**A mysterious figure** approaches from the shadows. "Interesting move, ${char.name}. Not many would have done that. You've caught the attention of powerful forces."
+
+They reveal three **sealed scrolls**: 
+• **Scroll of Power** - Grants great strength
+• **Scroll of Knowledge** - Reveals hidden truths
+• **Scroll of Destiny** - Shows possible futures
+
+"Choose wisely," they say before disappearing.
+
+What do you do?`;
+}
+
+// =====================================
 // AI INTEGRATION
 // =====================================
 
 async function callOpenAI(messages, temperature = 0.8) {
+    // DEMO MODE: Return simulated response
+    if (gameState.demoMode) {
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1000));
+        return null;  // Will trigger demo response
+    }
+
     if (!gameState.apiKey) {
-        alert('API key not configured!');
+        alert('No API key configured! Switching to demo mode.');
+        gameState.demoMode = true;
         return null;
     }
 
@@ -175,7 +335,8 @@ async function callOpenAI(messages, temperature = 0.8) {
         return data.choices[0].message.content;
     } catch (error) {
         console.error('OpenAI API Error:', error);
-        alert(`Error: ${error.message}\n\nPlease check your API key in settings.`);
+        alert(`Error: ${error.message}\n\nSwitching to demo mode.`);
+        gameState.demoMode = true;
         return null;
     }
 }
@@ -187,9 +348,17 @@ async function callOpenAI(messages, temperature = 0.8) {
 async function generateOpeningStory() {
     showLoading(true);
 
-    const systemPrompt = {
-        role: 'system',
-        content: `You are an expert Dungeon Master running an immersive RPG adventure. Your role is to:
+    let response;
+
+    if (gameState.demoMode) {
+        // Use demo response
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        response = getDemoResponse('', true);
+    } else {
+        // Use real AI
+        const systemPrompt = {
+            role: 'system',
+            content: `You are an expert Dungeon Master running an immersive RPG adventure. Your role is to:
 - Create vivid, engaging narratives with rich descriptions
 - Present meaningful choices and consequences
 - Maintain consistency with character abilities and backstory
@@ -198,26 +367,33 @@ async function generateOpeningStory() {
 - Keep responses focused and around 200-300 words
 
 Be creative, dramatic, and engaging. Make the player feel like the hero of an epic tale.`
-    };
+        };
 
-    const characterSummary = `Character: ${gameState.character.name}, a ${gameState.character.race} ${gameState.character.class}
+        const characterSummary = `Character: ${gameState.character.name}, a ${gameState.character.race} ${gameState.character.class}
 Backstory: ${gameState.character.backstory}
 Setting: ${gameState.character.setting}`;
 
-    const openingPrompt = {
-        role: 'user',
-        content: `Begin an exciting adventure for this character:\n\n${characterSummary}\n\nCreate an engaging opening scene that introduces the setting, presents an initial situation or mystery, and ends with choices for the player. Make it dramatic and immersive!`
-    };
+        const openingPrompt = {
+            role: 'user',
+            content: `Begin an exciting adventure for this character:\n\n${characterSummary}\n\nCreate an engaging opening scene that introduces the setting, presents an initial situation or mystery, and ends with choices for the player. Make it dramatic and immersive!`
+        };
 
-    const response = await callOpenAI([systemPrompt, openingPrompt]);
+        response = await callOpenAI([systemPrompt, openingPrompt]);
+
+        if (!response) {
+            // Fallback to demo
+            response = getDemoResponse('', true);
+        } else {
+            gameState.conversationHistory = [systemPrompt, openingPrompt, {
+                role: 'assistant',
+                content: response
+            }];
+        }
+    }
 
     if (response) {
-        gameState.conversationHistory = [systemPrompt, openingPrompt, {
-            role: 'assistant',
-            content: response
-        }];
-
-        addStoryMessage('Dungeon Master', response, false);
+        const modeIndicator = gameState.demoMode ? ' 🎭' : ' 🤖';
+        addStoryMessage('Dungeon Master' + modeIndicator, response, false);
         gameState.turnCount = 0;
     }
 
@@ -242,32 +418,46 @@ async function submitAction() {
 
     gameState.turnCount++;
 
-    // Build context
-    const characterContext = `Character: ${gameState.character.name} (${gameState.character.race} ${gameState.character.class})
+    let response;
+
+    if (gameState.demoMode) {
+        // Use demo response
+        await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 500));
+        response = getDemoResponse(action, false);
+    } else {
+        // Build context for real AI
+        const characterContext = `Character: ${gameState.character.name} (${gameState.character.race} ${gameState.character.class})
 Level: ${gameState.character.level}
 Current Turn: ${gameState.turnCount}`;
 
-    const actionPrompt = {
-        role: 'user',
-        content: `${characterContext}\n\nPlayer Action: ${action}\n\nContinue the story based on this action. Remember to:\n- Describe the consequences of their action\n- Maintain consistency with previous events\n- Present new challenges or choices\n- Keep the narrative engaging and dynamic\n- Use vivid, descriptive language`
-    };
+        const actionPrompt = {
+            role: 'user',
+            content: `${characterContext}\n\nPlayer Action: ${action}\n\nContinue the story based on this action. Remember to:\n- Describe the consequences of their action\n- Maintain consistency with previous events\n- Present new challenges or choices\n- Keep the narrative engaging and dynamic\n- Use vivid, descriptive language`
+        };
 
-    // Keep conversation history manageable (last 10 exchanges)
-    const recentHistory = gameState.conversationHistory.length > 20
-        ? [gameState.conversationHistory[0], ...gameState.conversationHistory.slice(-18)]
-        : gameState.conversationHistory;
+        // Keep conversation history manageable (last 10 exchanges)
+        const recentHistory = gameState.conversationHistory.length > 20
+            ? [gameState.conversationHistory[0], ...gameState.conversationHistory.slice(-18)]
+            : gameState.conversationHistory;
 
-    const messages = [...recentHistory, actionPrompt];
+        const messages = [...recentHistory, actionPrompt];
 
-    const response = await callOpenAI(messages);
+        response = await callOpenAI(messages);
+
+        if (!response) {
+            // Fallback to demo
+            response = getDemoResponse(action, false);
+        } else {
+            gameState.conversationHistory.push(actionPrompt, {
+                role: 'assistant',
+                content: response
+            });
+        }
+    }
 
     if (response) {
-        gameState.conversationHistory.push(actionPrompt, {
-            role: 'assistant',
-            content: response
-        });
-
-        addStoryMessage('Dungeon Master', response, false);
+        const modeIndicator = gameState.demoMode ? ' 🎭' : ' 🤖';
+        addStoryMessage('Dungeon Master' + modeIndicator, response, false);
     }
 
     actionInput.disabled = false;
@@ -317,6 +507,7 @@ function showLoading(show) {
 
 function showStatus() {
     const char = gameState.character;
+    const mode = gameState.demoMode ? '🎭 Demo Mode' : '🤖 Real AI';
     const statusMessage = `
 <strong>Character Status</strong>
 
@@ -328,6 +519,7 @@ function showStatus() {
 <strong>Mana:</strong> ${char.mana}/100
 
 <strong>Turn:</strong> ${gameState.turnCount}
+<strong>Mode:</strong> ${mode}
 
 <em>${char.backstory}</em>
     `;
@@ -412,9 +604,9 @@ const gameTips = [
     "💡 Tip: Try talking to NPCs to uncover story secrets.",
     "💡 Tip: Use 'examine' or 'look around' to get more details.",
     "💡 Tip: Your character's class affects how the story unfolds!",
-    "💡 Tip: The AI remembers your previous actions - consistency matters!",
     "💡 Tip: Try creative solutions - this is your adventure!",
-    "💡 Tip: Press Enter to send your action, Shift+Enter for new line."
+    "💡 Tip: Press Enter to send, Shift+Enter for new line.",
+    "💡 Tip: You're in demo mode! Add API key in settings for real AI."
 ];
 
 function showRandomTip() {
@@ -462,7 +654,8 @@ function loadGameState() {
                         if (msg.role === 'user') {
                             addStoryMessage('You', msg.content, true);
                         } else if (msg.role === 'assistant') {
-                            addStoryMessage('Dungeon Master', msg.content, false);
+                            const modeIndicator = gameState.demoMode ? ' 🎭' : ' 🤖';
+                            addStoryMessage('Dungeon Master' + modeIndicator, msg.content, false);
                         }
                     });
                 }
@@ -492,9 +685,10 @@ window.addEventListener('beforeunload', () => {
 // =====================================
 
 document.addEventListener('DOMContentLoaded', () => {
+    const mode = gameState.demoMode ? 'Demo Mode' : 'AI Mode';
     console.log('%c🐉 AI Dungeon Master 🐉',
         'background: linear-gradient(135deg, #d4af37, #b8931f); color: #0f0f1a; font-size: 24px; padding: 10px; border-radius: 5px; font-weight: bold;');
-    console.log('%cYour adventure awaits...', 'color: #d4af37; font-size: 16px; font-style: italic;');
+    console.log(`%c🎭 Running in ${mode} - Your adventure awaits!`, 'color: #d4af37; font-size: 16px; font-style: italic;');
 
     checkApiKey();
     addEasterEggs();
