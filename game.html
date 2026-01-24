@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐉 AI Dungeon Master - Interactive Adventure</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="game-style.css">
+</head>
+
+<body>
+    <div class="fantasy-bg">
+        <div class="stars"></div>
+        <div class="mist"></div>
+    </div>
+
+    <!-- API Key Setup Modal -->
+    <div id="apiModal" class="modal">
+        <div class="modal-content">
+            <h2>⚙️ Setup Required</h2>
+            <p>Enter your OpenAI API Key to begin your adventure:</p>
+            <input type="password" id="apiKeyInput" placeholder="sk-..." class="api-input">
+            <p class="helper-text">Get your API key from <a href="https://platform.openai.com/api-keys"
+                    target="_blank">OpenAI Platform</a></p>
+            <button class="btn btn-primary" onclick="saveApiKey()">Start Adventure</button>
+        </div>
+    </div>
+
+    <!-- Main Game Container -->
+    <div id="gameContainer" class="game-container" style="display: none;">
+
+        <!-- Header -->
+        <header class="game-header">
+            <div class="header-content">
+                <h1 class="game-title">🐉 AI Dungeon Master</h1>
+                <div class="header-actions">
+                    <button class="icon-btn" onclick="showStatus()" title="Character Status">
+                        📊
+                    </button>
+                    <button class="icon-btn" onclick="newGame()" title="New Game">
+                        🔄
+                    </button>
+                    <button class="icon-btn" onclick="showSettings()" title="Settings">
+                        ⚙️
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Character Creation Screen -->
+        <div id="characterCreation" class="screen active">
+            <div class="creation-container">
+                <h2 class="screen-title">Create Your Hero</h2>
+
+                <div class="form-group">
+                    <label>Character Name</label>
+                    <input type="text" id="charName" placeholder="Enter your hero's name" class="input-field">
+                </div>
+
+                <div class="form-group">
+                    <label>Race</label>
+                    <div class="option-grid">
+                        <button class="option-card" onclick="selectRace('Human')">
+                            <span class="option-icon">👤</span>
+                            <span class="option-label">Human</span>
+                            <span class="option-desc">Versatile & Adaptable</span>
+                        </button>
+                        <button class="option-card" onclick="selectRace('Elf')">
+                            <span class="option-icon">🧝</span>
+                            <span class="option-label">Elf</span>
+                            <span class="option-desc">Graceful & Magical</span>
+                        </button>
+                        <button class="option-card" onclick="selectRace('Dwarf')">
+                            <span class="option-icon">⛏️</span>
+                            <span class="option-label">Dwarf</span>
+                            <span class="option-desc">Sturdy & Resilient</span>
+                        </button>
+                        <button class="option-card" onclick="selectRace('Halfling')">
+                            <span class="option-icon">🍀</span>
+                            <span class="option-label">Halfling</span>
+                            <span class="option-desc">Lucky & Nimble</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Class</label>
+                    <div class="option-grid">
+                        <button class="option-card" onclick="selectClass('Warrior')">
+                            <span class="option-icon">⚔️</span>
+                            <span class="option-label">Warrior</span>
+                            <span class="option-desc">Master of Combat</span>
+                        </button>
+                        <button class="option-card" onclick="selectClass('Mage')">
+                            <span class="option-icon">🔮</span>
+                            <span class="option-label">Mage</span>
+                            <span class="option-desc">Arcane Power</span>
+                        </button>
+                        <button class="option-card" onclick="selectClass('Rogue')">
+                            <span class="option-icon">🗡️</span>
+                            <span class="option-label">Rogue</span>
+                            <span class="option-desc">Stealth Expert</span>
+                        </button>
+                        <button class="option-card" onclick="selectClass('Cleric')">
+                            <span class="option-icon">✨</span>
+                            <span class="option-label">Cleric</span>
+                            <span class="option-desc">Divine Healer</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Setting</label>
+                    <div class="option-grid">
+                        <button class="option-card" onclick="selectSetting('classic')">
+                            <span class="option-icon">🏰</span>
+                            <span class="option-label">Classic Fantasy</span>
+                        </button>
+                        <button class="option-card" onclick="selectSetting('dark')">
+                            <span class="option-icon">🌑</span>
+                            <span class="option-label">Dark Fantasy</span>
+                        </button>
+                        <button class="option-card" onclick="selectSetting('scifi')">
+                            <span class="option-icon">🚀</span>
+                            <span class="option-label">Sci-Fi</span>
+                        </button>
+                        <button class="option-card" onclick="selectSetting('pirate')">
+                            <span class="option-icon">🏴‍☠️</span>
+                            <span class="option-label">Pirate</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Backstory (Optional)</label>
+                    <textarea id="charBackstory" placeholder="Tell us about your character's past..."
+                        class="input-field"></textarea>
+                </div>
+
+                <button class="btn btn-primary btn-large" onclick="startAdventure()">
+                    Begin Adventure ⚔️
+                </button>
+            </div>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="gameScreen" class="screen">
+            <div class="game-layout">
+                <!-- Story Display -->
+                <div class="story-panel">
+                    <div id="storyContent" class="story-content">
+                        <!-- Story messages will appear here -->
+                    </div>
+
+                    <!-- Input Area -->
+                    <div class="input-area">
+                        <textarea id="actionInput"
+                            placeholder="What do you do? (Type your action and press Enter or click Send)"
+                            class="action-input" rows="3"></textarea>
+                        <button class="btn btn-primary" onclick="submitAction()">
+                            Send ➤
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Character Panel -->
+                <div class="character-panel">
+                    <div class="char-card">
+                        <h3>Your Character</h3>
+                        <div id="charInfo">
+                            <p><strong>Name:</strong> <span id="displayName">-</span></p>
+                            <p><strong>Race:</strong> <span id="displayRace">-</span></p>
+                            <p><strong>Class:</strong> <span id="displayClass">-</span></p>
+                            <p><strong>Level:</strong> <span id="displayLevel">1</span></p>
+                        </div>
+                    </div>
+
+                    <div class="stats-card">
+                        <h3>Stats</h3>
+                        <div class="stat-row">
+                            <span>Health:</span>
+                            <div class="stat-bar">
+                                <div class="stat-fill health" style="width: 100%"></div>
+                            </div>
+                        </div>
+                        <div class="stat-row">
+                            <span>Mana:</span>
+                            <div class="stat-bar">
+                                <div class="stat-fill mana" style="width: 100%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-card">
+                        <h3>Quick Commands</h3>
+                        <ul class="command-list">
+                            <li><code>look around</code> - Examine surroundings</li>
+                            <li><code>talk to [NPC]</code> - Start conversation</li>
+                            <li><code>use [item]</code> - Use an item</li>
+                            <li><code>attack [enemy]</code> - Engage in combat</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner"></div>
+        <p class="loading-text">The Dungeon Master is weaving your tale...</p>
+    </div>
+
+    <script src="game-script.js"></script>
+</body>
+
+</html>
